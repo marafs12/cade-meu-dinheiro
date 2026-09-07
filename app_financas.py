@@ -6,20 +6,28 @@ import plotly.express as px
 
 st.set_page_config(page_title="Cadê meu Dinheiro?", layout="centered")
 
-ARQUIVO_DADOS = 'minhas_financas.csv'
+st.title("Cadê meu Dinheiro? 💸")
+
+# --- SELEÇÃO DE PERFIL ---
+st.sidebar.header("👤 Perfil de Acesso")
+perfil_escolhido = st.sidebar.text_input("Quem está usando?", value="Maria").strip()
+
+if not perfil_escolhido:
+    perfil_escolhido = "Geral"
+
+ARQUIVO_DADOS = f"financas_{perfil_escolhido.lower().replace(' ', '_')}.csv"
+
+st.sidebar.info(f"Visualizando os dados de: **{perfil_escolhido}**")
 
 def carregar_dados():
     if os.path.exists(ARQUIVO_DADOS):
         df = pd.read_csv(ARQUIVO_DADOS)
-        # Garante que a coluna de data seja lida corretamente
         df['Data'] = pd.to_datetime(df['Data']).dt.date
         return df
     else:
         return pd.DataFrame(columns=['Data', 'Tipo', 'Categoria', 'Valor'])
 
 df = carregar_dados()
-
-st.title("Cadê meu Dinheiro? 💸")
 
 # --- FILTRO POR PERÍODO ---
 st.subheader("Filtrar Período")
@@ -46,7 +54,7 @@ elif filtro_modo == "Personalizado":
 
 st.divider()
 
-# Os cálculos agora respeitam o período filtrado na tela
+# Cálculos do Perfil Selecionado
 entradas = df_filtrado[df_filtrado['Tipo'] == 'Entrada']['Valor'].sum()
 saidas = df_filtrado[df_filtrado['Tipo'] == 'Saída']['Valor'].sum()
 saldo = entradas - saidas
@@ -64,13 +72,21 @@ with st.form("form_lancamento", clear_on_submit=True):
     tipo = col_tipo.selectbox("Tipo", ["Saída", "Entrada"])
     data_lanc = col_data.date_input("Data", date.today())
     
+    # APENAS AS NOVAS CATEGORIAS ESCOLHIDAS
     categorias = [
-        "Mercado", 
-        "Bebidas", 
-        "Jogos", 
-        "Lanches", 
-        "Contas fixas", 
+        "Mercado e coisas pra casa",
+        "Refeição no trabalho",
+        "Viagem a trabalho",
+        "Lanches e rolês",
+        "Combustível",
+        "Internet",
+        "Contribuição",
+        "Energia e água",
+        "Ração",
+        "Roupas e produtos pra gente",
+        "Estética",
         "Outros gastos",
+        "Faculdade do amor",
         "Renda / Salário"
     ]
     categoria = st.selectbox("Categoria", categorias)
@@ -87,7 +103,7 @@ with st.form("form_lancamento", clear_on_submit=True):
         })
         df = pd.concat([df, novo_dado], ignore_index=True)
         df.to_csv(ARQUIVO_DADOS, index=False)
-        st.success("Lançamento salvo com sucesso.")
+        st.success(f"Lançamento salvo para {perfil_escolhido}!")
         st.rerun()
 
 st.divider()
@@ -98,7 +114,7 @@ if not df_saidas.empty:
     fig = px.pie(df_saidas, values='Valor', names='Categoria', hole=0.4)
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.info("Nenhuma despesa registrada neste período.")
+    st.info("Nenhuma despesa registrada neste período para este perfil.")
 
 st.divider()
 
@@ -108,7 +124,7 @@ if not df_filtrado.empty:
     
     st.markdown("### Excluir Registro")
     opcoes_exclusao = []
-    for index, row in df.iterrows(): # Mantém a busca no arquivo geral para segurança do ID
+    for index, row in df.iterrows():
         opcoes_exclusao.append(f"ID {index} | {row['Data']} | {row['Categoria']} | R$ {row['Valor']}")
     
     item_para_excluir = st.selectbox("Selecione o lançamento incorreto:", opcoes_exclusao)
